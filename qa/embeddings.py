@@ -8,8 +8,13 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 def get_embedding_model(model_name: str = EMBEDDING_MODEL) -> SentenceTransformer:
-    """Initialize the sentence-transformer model used for document embeddings."""
-    return SentenceTransformer(model_name)
+    """Initialize the cached sentence-transformer model used for embeddings.
+
+    The application already persists its FAISS index locally.  Keeping the
+    embedder local prevents an unrelated Hugging Face network check from
+    blocking a live `/ask/` request before it reaches FAISS.
+    """
+    return SentenceTransformer(model_name, local_files_only=True)
 
 
 def batch_embed_texts(texts: list[str], batch_size: int = 32, model_name: str = EMBEDDING_MODEL) -> list[list[float]]:

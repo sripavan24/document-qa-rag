@@ -53,7 +53,7 @@ class PersistentVectorStore:
         self.metadata.extend(metadata)
         self._save()
 
-    def search(self, query_vector: list[float], top_k: int = 4, threshold: float | None = None) -> list[dict[str, Any]]:
+    def search(self, query_vector: list[float], top_k: int = 4) -> list[dict[str, Any]]:
         if self.index is None or self.index.ntotal == 0:
             return []
 
@@ -66,8 +66,6 @@ class PersistentVectorStore:
 
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0 or idx >= len(self.metadata):
-                continue
-            if threshold is not None and float(score) < float(threshold):
                 continue
             item = dict(self.metadata[int(idx)])
             item["score"] = float(score)

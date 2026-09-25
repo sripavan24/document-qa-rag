@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import fitz
+from docx import Document
 
-SUPPORTED_EXTENSIONS = {".pdf"}
+SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".docx"}
 
 
 def discover_documents(data_dir: str | Path) -> list[Path]:
@@ -22,7 +23,7 @@ def discover_documents(data_dir: str | Path) -> list[Path]:
 
 
 def validate_document(file_path: str | Path) -> bool:
-    """Validate that a document is a supported PDF file."""
+    """Validate that a document has a supported extension."""
     path = Path(file_path)
     if not path.exists() or not path.is_file():
         return False
@@ -54,10 +55,44 @@ def extract_pdf_pages(file_path: str | Path) -> list[dict[str, Any]]:
     return extracted_pages
 
 
+def _single_page_document(path: Path, text: str) -> list[dict[str, Any]]:
+    """Represent a text-based file as one source page for RAG metadata."""
+    return [{"filename": path.name, "page_number": 1, "text": text.strip()}] if text.strip() else []
+
+
+def extract_txt_pages(file_path: str | Path) -> list[dict[str, Any]]:
+    """Extract UTF-8 plain text as a single source page."""
+    path = Path(file_path)
+    if not validate_document(path) or path.suffix.lower() != ".txt":
+        return []
+    return _single_page_document(path, path.read_text(encoding="utf-8", errors="replace"))
+
+
+def extract_docx_pages(file_path: str | Path) -> list[dict[str, Any]]:
+    """Extract paragraph text from a DOCX file as a single source page."""
+    path = Path(file_path)
+    if not validate_document(path) or path.suffix.lower() != ".docx":
+        return []
+    document = Document(path)
+    return _single_page_document(path, "\n".join(paragraph.text for paragraph in document.paragraphs))
+
+
+def extract_document_pages(file_path: str | Path) -> list[dict[str, Any]]:
+    """Extract pages from any supported document type."""
+    path = Path(file_path)
+    extractors = {
+        ".pdf": extract_pdf_pages,
+        ".txt": extract_txt_pages,
+        ".docx": extract_docx_pages,
+    }
+    extractor = extractors.get(path.suffix.lower())
+    return extractor(path) if extractor else []
+
+
 def load_documents(data_dir: str | Path) -> list[dict[str, Any]]:
-    """Load all valid PDF documents and their pages into a simple metadata structure."""
+    """Load all valid supported documents into a simple metadata structure."""
     pages: list[dict[str, Any]] = []
-    for pdf_path in discover_documents(data_dir):
-        for page in extract_pdf_pages(pdf_path):
-            pages.append({"source_file": str(pdf_path), "filename": page["filename"], "page_number": page["page_number"], "text": page["text"]})
+    for document_path in discover_documents(data_dir):
+        for page in extract_document_pages(document_path):
+            pages.append({"source_file": str(document_path), "filename": page["filename"], "page_number": page["page_number"], "text": page["text"]})
     return pages

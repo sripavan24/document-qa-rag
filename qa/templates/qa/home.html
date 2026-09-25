@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Document Atlas · Q&A</title>
+  <style>
+    :root { --ink:#172238; --muted:#64748b; --line:#e3e8f1; --paper:#fffefa; --violet:#7257e8; --violet-dark:#5941ca; --mint:#e5fbf1; --bg:#f4f6fb; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); background:var(--bg); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .app { height:100vh; overflow:hidden; display:grid; grid-template-columns:280px minmax(0,1fr); }
+    aside { height:100vh; background:#172238; color:#f8fafc; padding:30px 22px; display:flex; flex-direction:column; gap:30px; }
+    .brand { display:flex; gap:11px; align-items:center; font-weight:800; font-size:18px; letter-spacing:-.4px; } .logo { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:#8875ed; }
+    .eyebrow { color:#9eadd0; font-size:11px; text-transform:uppercase; letter-spacing:.13em; font-weight:700; margin:0 0 10px; }
+    .file-list { display:flex; flex-direction:column; gap:9px; max-height:42vh; overflow:auto; } .file { font-size:13px; line-height:1.35; padding:11px; background:#243149; border:1px solid #34425d; border-radius:10px; overflow-wrap:anywhere; }
+    .status { margin-top:auto; display:flex; align-items:center; gap:8px; color:#c4d0e8; font-size:12px; } .dot { width:8px; height:8px; border-radius:50%; background:#53db9b; box-shadow:0 0 0 4px #2a594a; }
+    main { height:100vh; min-height:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto; max-width:1060px; width:100%; margin:0 auto; padding:44px 48px 28px; }
+    header { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; } h1 { margin:0; font-size:clamp(27px,4vw,42px); line-height:1.08; letter-spacing:-1.5px; } .subtitle { color:var(--muted); max-width:570px; margin:13px 0 0; line-height:1.6; } .count { white-space:nowrap; padding:9px 12px; border-radius:99px; background:var(--mint); color:#087349; font-size:12px; font-weight:750; }
+    #chat { min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:20px; padding:45px 8px 25px 0; } .welcome { padding:28px; border:1px dashed #cbd5e1; border-radius:18px; color:var(--muted); background:rgba(255,255,255,.52); } .welcome strong { display:block; color:var(--ink); font-size:17px; margin-bottom:7px; }
+    .message { max-width:880px; } .question { margin-left:auto; max-width:75%; padding:14px 17px; color:white; border-radius:18px 18px 4px 18px; background:var(--violet); line-height:1.5; } .answer { padding:23px; border:1px solid var(--line); border-radius:6px 18px 18px; background:var(--paper); box-shadow:0 8px 26px rgba(40,53,84,.06); } .answer-label { color:var(--violet-dark); font-size:11px; text-transform:uppercase; letter-spacing:.12em; font-weight:800; margin-bottom:10px; } .answer-text { line-height:1.7; white-space:pre-wrap; }
+    .sources { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .sources-title { font-size:12px; font-weight:800; margin-bottom:10px; } .source-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:9px; } .source { border:1px solid #dce4f2; background:#f8faff; border-radius:10px; padding:11px; } .source-top { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#34425a; font-size:12px; font-weight:750; } .score { color:#087349; background:#e4f9ef; border-radius:99px; padding:3px 7px; white-space:nowrap; font-size:11px; } .chunk { color:var(--muted); font-size:12px; line-height:1.45; margin:7px 0 0; }
+    form { position:sticky; bottom:0; background:linear-gradient(transparent,var(--bg) 20%); padding-top:23px; } .composer { display:flex; align-items:flex-end; gap:10px; padding:9px; border:1px solid #cbd5e1; background:white; box-shadow:0 10px 28px rgba(31,41,55,.10); border-radius:17px; } textarea { flex:1; border:0; outline:0; padding:9px 10px; min-height:42px; max-height:130px; resize:none; color:var(--ink); font:inherit; } button { border:0; cursor:pointer; background:var(--violet); color:white; border-radius:12px; font-weight:750; padding:13px 17px; font:inherit; } button:hover { background:var(--violet-dark); } button:disabled { cursor:wait; opacity:.6; } .hint { color:var(--muted); font-size:11px; margin:9px 5px 0; } .loading { color:var(--muted); font-size:14px; padding:15px; } .error { color:#b42318; background:#fff1f0; padding:14px; border-radius:12px; }
+    @media (max-width:760px) { .app { display:block; height:100vh; } aside { display:none; } main { padding:28px 18px 18px; } header { display:block; } .count { display:inline-block; margin-top:16px; } #chat { padding-top:30px; } .question { max-width:90%; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><span class="logo">✦</span> Document Atlas</div>
+    <section><p class="eyebrow">Knowledge base</p><div class="file-list">{% for file in pdf_files %}<div class="file">📄 {{ file }}</div>{% empty %}<div class="file">No PDF documents found</div>{% endfor %}</div></section>
+    <div class="status"><span class="dot"></span> Ready to search</div>
+  </aside>
+  <main>
+    <header><div><h1>Ask your documents.</h1><p class="subtitle">Answers are generated only from the PDFs in your knowledge base.</p></div><span class="count">{{ pdf_files|length }} document{{ pdf_files|length|pluralize }}</span></header>
+    <section id="chat" aria-live="polite"><div class="welcome"><strong>Your private document assistant</strong>Ask a clear question about the PDFs in your knowledge base.</div></section>
+    <form id="question-form"><div class="composer"><textarea id="question" placeholder="Ask a question about your documents…" aria-label="Question" required></textarea><button id="submit" type="submit">Ask →</button></div><div class="hint">Press Enter to send · Shift + Enter for a new line</div></form>
+  </main>
+</div>
+<script>
+  const chat = document.querySelector('#chat'), form = document.querySelector('#question-form'), input = document.querySelector('#question'), submit = document.querySelector('#submit');
+  const escapeHtml = text => String(text ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+  const scrollDown = () => window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+  function sourceCards(chunks) {
+    if (!chunks?.length) return '<div class="sources"><div class="sources-title">Retrieved evidence</div><span class="chunk">No document chunks met the relevance threshold.</span></div>';
+    return `<div class="sources"><div class="sources-title">Retrieved evidence · ${chunks.length} source${chunks.length === 1 ? '' : 's'}</div><div class="source-grid">${chunks.map((chunk, index) => `<article class="source"><div class="source-top"><span>#${index + 1} · ${escapeHtml(chunk.filename || 'Unknown file')}</span></div><p class="chunk">Page ${escapeHtml(chunk.page_number || '—')} · ${escapeHtml(chunk.text || '').slice(0, 180)}${String(chunk.text || '').length > 180 ? '…' : ''}</p></article>`).join('')}</div></div>`;
+  }
+  function addQuestion(question) { chat.insertAdjacentHTML('beforeend', `<div class="message question">${escapeHtml(question)}</div>`); }
+  function addAnswer(data) { chat.insertAdjacentHTML('beforeend', `<article class="message answer"><div class="answer-label">Answer</div><div class="answer-text">${escapeHtml(data.answer)}</div></article>`); }
+  form.addEventListener('submit', async event => {
+    event.preventDefault(); const question = input.value.trim(); if (!question) return;
+    addQuestion(question); input.value = ''; input.style.height = ''; submit.disabled = true; submit.textContent = 'Searching…';
+    const loading = document.createElement('div'); loading.className = 'loading'; loading.textContent = 'Searching document chunks and preparing a grounded answer…'; chat.append(loading); scrollDown();
+    try { const response = await fetch('/ask/', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question})}); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to answer the question.'); loading.remove(); addAnswer(data); }
+    catch (error) { loading.remove(); chat.insertAdjacentHTML('beforeend', `<div class="message error">${escapeHtml(error.message)}</div>`); }
+    finally { submit.disabled = false; submit.textContent = 'Ask →'; input.focus(); scrollDown(); }
+  });
+  input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
+  input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 130)}px`; });
+</script>
+</body>
+</html>
