@@ -5,6 +5,7 @@ import fitz
 from django.test import SimpleTestCase
 
 from qa.chunking import chunk_documents, chunk_text
+from qa.embeddings import batch_embed_texts, generate_chunk_embeddings
 from qa.ingestion import discover_documents, extract_pdf_pages, validate_document
 
 
@@ -78,3 +79,26 @@ class ChunkingTests(SimpleTestCase):
 
     def test_chunk_text_handles_empty_input(self):
         self.assertEqual(chunk_text("   ", chunk_size=30, overlap=5), [])
+
+
+class EmbeddingTests(SimpleTestCase):
+    def test_batch_embed_texts_returns_embeddings_with_consistent_shape(self):
+        texts = ["This is a test sentence.", "This is a second sentence."]
+        embeddings = batch_embed_texts(texts, batch_size=2)
+
+        self.assertEqual(len(embeddings), 2)
+        self.assertTrue(all(len(vector) > 0 for vector in embeddings))
+        self.assertEqual(len(embeddings[0]), len(embeddings[1]))
+
+    def test_generate_chunk_embeddings_keeps_chunk_metadata(self):
+        chunks = [
+            {"chunk_id": "doc.pdf::p1::c1", "text": "Python and Django are used for the backend."},
+            {"chunk_id": "doc.pdf::p1::c2", "text": "RAG uses vector similarity to retrieve relevant context."},
+        ]
+
+        embedded = generate_chunk_embeddings(chunks, batch_size=1)
+
+        self.assertEqual(len(embedded), 2)
+        self.assertIn("embedding", embedded[0])
+        self.assertIn("chunk_id", embedded[0])
+        self.assertTrue(len(embedded[0]["embedding"]) > 0)
