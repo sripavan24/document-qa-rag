@@ -6,6 +6,7 @@ from django.test import SimpleTestCase
 
 from qa.chunking import chunk_documents, chunk_text
 from qa.embeddings import batch_embed_texts, generate_chunk_embeddings
+from qa.generator import build_grounded_prompt, generate_answer
 from qa.ingestion import discover_documents, extract_pdf_pages, validate_document
 from qa.retriever import retrieve_top_k
 from qa.vectorstore import PersistentVectorStore
@@ -166,3 +167,22 @@ class RetrievalTests(SimpleTestCase):
         with TemporaryDirectory() as temp_dir:
             store = PersistentVectorStore(index_path=Path(temp_dir) / "faiss.index", metadata_path=Path(temp_dir) / "metadata.json")
             self.assertEqual(retrieve_top_k("   ", store), [])
+
+
+class GeneratorTests(SimpleTestCase):
+    def test_build_grounded_prompt_uses_context_only(self):
+        contexts = [{"filename": "doc.pdf", "page_number": 2, "text": "Django uses a model-view-template architecture."}]
+        prompt = build_grounded_prompt("What architecture does Django use?", contexts)
+
+        self.assertIn("doc.pdf", prompt)
+        self.assertIn("Page 2", prompt)
+        self.assertIn("Django uses a model-view-template architecture", prompt)
+
+    def test_generate_answer_handles_unanswerable_questions(self):
+        result = generate_answer("What is the capital of France?", [])
+        self.assertEqual(result["answer"], "I couldn't find the answer in the provided documents.")
+
+    def test_generate_answer_returns_safe_fallback_without_api_key(self):
+        contexts = [{"filename": "sample.pdf", "page_number": 1, "text": "The project stores files in the data directory."}]
+        result = generate_answer("Where are the files stored?", contexts)
+        self.assertIn("sample.pdf", str(result["sources"]))
