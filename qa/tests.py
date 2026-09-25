@@ -7,6 +7,7 @@ from django.test import SimpleTestCase
 from qa.chunking import chunk_documents, chunk_text
 from qa.embeddings import batch_embed_texts, generate_chunk_embeddings
 from qa.ingestion import discover_documents, extract_pdf_pages, validate_document
+from qa.vectorstore import PersistentVectorStore
 
 
 class IngestionTests(SimpleTestCase):
@@ -102,3 +103,35 @@ class EmbeddingTests(SimpleTestCase):
         self.assertIn("embedding", embedded[0])
         self.assertIn("chunk_id", embedded[0])
         self.assertTrue(len(embedded[0]["embedding"]) > 0)
+
+
+class VectorStoreTests(SimpleTestCase):
+    def test_vector_store_persists_and_loads_index(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            index_path = root / "faiss.index"
+            metadata_path = root / "metadata.json"
+            store = PersistentVectorStore(index_path=index_path, metadata_path=metadata_path)
+
+            vectors = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+            metadata = [{"chunk_id": "a", "text": "alpha"}, {"chunk_id": "b", "text": "beta"}]
+            store.add_vectors(vectors, metadata)
+
+            reloaded = PersistentVectorStore(index_path=index_path, metadata_path=metadata_path)
+            self.assertEqual(len(reloaded.metadata), 2)
+            self.assertTrue(reloaded.index is not None)
+            self.assertEqual(reloaded.index.ntotal, 2)
+
+    def test_vector_store_search_returns_metadata_and_score(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            index_path = root / "faiss.index"
+            metadata_path = root / "metadata.json"
+            store = PersistentVectorStore(index_path=index_path, metadata_path=metadata_path)
+            store.add_vectors([[1.0, 0.0], [0.0, 1.0]], [{"chunk_id": "one", "text": "alpha"}, {"chunk_id": "two", "text": "beta"}])
+
+            results = store.search([1.0, 0.0], top_k=1, threshold=0.5)
+
+            self.assertTrue(results)
+            self.assertIn("score", results[0])
+            self.assertEqual(results[0]["chunk_id"], "one")
