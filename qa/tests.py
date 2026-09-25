@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 import fitz
 from django.test import SimpleTestCase
 
+from qa.chunking import chunk_documents, chunk_text
 from qa.ingestion import discover_documents, extract_pdf_pages, validate_document
 
 
@@ -48,3 +49,32 @@ class IngestionTests(SimpleTestCase):
             self.assertEqual(first["filename"], pdf_path.name)
             self.assertIsInstance(first["page_number"], int)
             self.assertIn("This is a test page", first["text"])
+
+
+class ChunkingTests(SimpleTestCase):
+    def test_chunk_text_adds_overlap_and_keeps_text(self):
+        text = (
+            "The project uses Django for the application shell and a simple retrieval pipeline. "
+            "Each document is parsed page by page so the source metadata stays accurate. "
+            "Chunks are intentionally overlapped to preserve context at boundaries. "
+            "This approach keeps answers grounded in the user-provided documents. "
+            "The system stores chunk metadata for later source citations."
+        )
+        chunks = chunk_text(text, chunk_size=120, overlap=30)
+
+        self.assertTrue(chunks)
+        self.assertTrue(len(chunks) > 1)
+        self.assertTrue(all(len(chunk) <= 120 for chunk in chunks))
+        self.assertNotEqual(chunks[0], chunks[1])
+
+    def test_chunk_documents_preserves_metadata(self):
+        pages = [{"filename": "doc.pdf", "page_number": 1, "text": "This is a sample page with enough text to chunk into pieces."}]
+        chunks = chunk_documents(pages, chunk_size=30, overlap=10)
+
+        self.assertTrue(chunks)
+        self.assertEqual(chunks[0]["filename"], "doc.pdf")
+        self.assertEqual(chunks[0]["page_number"], 1)
+        self.assertIn("chunk_id", chunks[0])
+
+    def test_chunk_text_handles_empty_input(self):
+        self.assertEqual(chunk_text("   ", chunk_size=30, overlap=5), [])
