@@ -58,6 +58,9 @@ class PersistentVectorStore:
             return []
 
         query = np.asarray([query_vector], dtype="float32")
+        if query.shape[1] != self.index.d:
+            raise ValueError(f"Query dimension mismatch: index expects {self.index.d}, got {query.shape[1]}")
+
         scores, indices = self.index.search(query, min(top_k, self.index.ntotal))
         results: list[dict[str, Any]] = []
 

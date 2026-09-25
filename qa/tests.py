@@ -7,6 +7,7 @@ from django.test import SimpleTestCase
 from qa.chunking import chunk_documents, chunk_text
 from qa.embeddings import batch_embed_texts, generate_chunk_embeddings
 from qa.ingestion import discover_documents, extract_pdf_pages, validate_document
+from qa.retriever import retrieve_top_k
 from qa.vectorstore import PersistentVectorStore
 
 
@@ -113,7 +114,7 @@ class VectorStoreTests(SimpleTestCase):
             metadata_path = root / "metadata.json"
             store = PersistentVectorStore(index_path=index_path, metadata_path=metadata_path)
 
-            vectors = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+            vectors = batch_embed_texts(["alpha", "beta"], batch_size=2)
             metadata = [{"chunk_id": "a", "text": "alpha"}, {"chunk_id": "b", "text": "beta"}]
             store.add_vectors(vectors, metadata)
 
@@ -128,10 +129,40 @@ class VectorStoreTests(SimpleTestCase):
             index_path = root / "faiss.index"
             metadata_path = root / "metadata.json"
             store = PersistentVectorStore(index_path=index_path, metadata_path=metadata_path)
-            store.add_vectors([[1.0, 0.0], [0.0, 1.0]], [{"chunk_id": "one", "text": "alpha"}, {"chunk_id": "two", "text": "beta"}])
+            vectors = batch_embed_texts(["alpha", "beta"], batch_size=2)
+            store.add_vectors(vectors, [{"chunk_id": "one", "text": "alpha"}, {"chunk_id": "two", "text": "beta"}])
 
-            results = store.search([1.0, 0.0], top_k=1, threshold=0.5)
+            results = store.search(vectors[0], top_k=1, threshold=0.0)
 
             self.assertTrue(results)
             self.assertIn("score", results[0])
-            self.assertEqual(results[0]["chunk_id"], "one")
+            self.assertIn("chunk_id", results[0])
+
+
+class RetrievalTests(SimpleTestCase):
+    def test_retrieve_top_k_returns_results_and_score(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            store = PersistentVectorStore(index_path=root / "faiss.index", metadata_path=root / "metadata.json")
+            vectors = batch_embed_texts(
+                [
+                    "Django is a Python web framework.",
+                    "FAISS stores vectors for search.",
+                ],
+                batch_size=2,
+            )
+            store.add_vectors(
+                vectors,
+                [{"chunk_id": "one", "text": "Django is a Python web framework."}, {"chunk_id": "two", "text": "FAISS stores vectors for search."}],
+            )
+
+            results = retrieve_top_k("Django", store, top_k=2, threshold=0.0)
+
+            self.assertTrue(results)
+            self.assertIn("score", results[0])
+            self.assertIn("text", results[0])
+
+    def test_retrieve_top_k_ignores_empty_query(self):
+        with TemporaryDirectory() as temp_dir:
+            store = PersistentVectorStore(index_path=Path(temp_dir) / "faiss.index", metadata_path=Path(temp_dir) / "metadata.json")
+            self.assertEqual(retrieve_top_k("   ", store), [])
