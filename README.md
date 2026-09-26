@@ -1,7 +1,5 @@
 <div align="center">
 
-# 📚 Document Atlas
-
 ### Enterprise-grade Retrieval-Augmented Generation for your local document library
 
 *Ask questions in plain English. Get answers grounded only in your own PDF, TXT, and DOCX files — never hallucinated, always traceable.*
